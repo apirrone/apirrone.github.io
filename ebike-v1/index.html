@@ -1,0 +1,140 @@
+
+<!doctype html>
+<html lang="en">
+    <head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<meta name="description" content="">
+	<meta name="author" content="">
+	<!-- <link rel="icon" href="/docs/4.0/assets/img/favicons/favicon.ico"> -->
+
+	<title>300€ DIY Electric Mountain Bike Project v1</title>
+
+	<link rel="canonical" href="https://getbootstrap.com/docs/4.0/examples/grid/">
+
+	<!-- Bootstrap core CSS -->
+	<link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+	<!-- Custom styles for this template -->
+	<link href="grid.css" rel="stylesheet">
+    </head>
+
+    <body>
+	<div class="container">
+
+	    <h1>300€ DIY Electric Mountain Bike Project v1</h1>
+	    <h6><i>Antoine Pirrone</i> and <i>Maxime Palesi</i></h6>
+	    <br>
+	    <p>I have been wanting to build a rather powerful (><b>2000W</b>) electric mountain bike for a while now, but the high price of powerful conversion kits was always stopping me (often more than 500€ wih the batteries for <b>2000W</b> or more).</p>
+	    <p>While researching other solutions online I found <a href="https://www.youtube.com/watch?v=PQF86T2nsKE">that video</a> (in french), where a custom <b>~2000W</b> bike is made for under 200€ (not including the bike). That convinced me investigate more, and to actually start the project.</p>
+	    <p>When talking about it with my cousin, he got interested and we decided to do it together, splitting the costs. Our initial goal is to spend a maximum of  <b>300€</b> in total (bike included).</p>
+	    <br>
+	    <p>The specs we would like to achieve are the following :</p>
+	    <ul>
+		<li>Enough torque to start from standstill</li>
+		<li>About 20kms of range</li>
+		<li>About 30-40 km/h max speed (we don't really need to go fast)</li>
+	    </ul>
+	    <br>
+	    <p>So we started listing and sourcing everything we needed : </p>
+	    <ul>
+		<li>A used mountain bike, with front and rear suspensions and disk brakes</li>
+		<li>A sensored brushless DC electric motor producing between 2000 and 3000 Watts </li>
+		<li>A controller capable of handling the current pulled by the motor</li>
+		<li>A battery pack capable of delivering enough current, and of sufficient capacity to allow the desired range</li>
+		<li>A belt for transmission</li>
+		<li>A large pulley to increase torque</li>
+		<li>A twist throttle</li>
+		<li>Aluminum sheets to be cnc machined to make mounting pieces</li>
+		<li>Various laying around stuff (cables, connectors etc)</li>
+	    </ul>
+
+	    <table class="table">
+		<thead class="thead-light">
+		    <tr>
+			<th scope="col">Item</th>
+			<th scope="col">Budget</th>
+			<th scope="col">Actual price paid</th>
+			<th scope="col">Potential Source</th>
+		    </tr>
+		</thead>
+		<tbody>
+		    <tr>
+			<td>Bike</td>
+			<td>100€</td>
+			<td>120€</td>
+			<td>Bought used</td>
+		    </tr>
+		    <tr>
+			<td>Motor</td>
+			<td>50€</td>
+			<td>-</td>
+			<td><a href="https://www.amazon.fr/dp/B07Z42767X">amazon</a></td>
+		    </tr>
+		    <tr>
+			<td>Controller</td>
+			<td>60€</td>
+			<td>-</td>
+			<td><a href="http://www.freerchobby.cc/e_productshow/?28-HOT-SALE-FRC-VESC-Open-Source-ESC-by-Benjamins-Robotics-for-Electric-Skateboard-28.html">freerchobby</a></td>
+		    </tr>
+		    <tr>
+			<td>Battery Pack</td>
+			<td>0€</td>
+			<td>0€</td>
+			<td>We reuse 4s lipo batteries like <a href="https://hobbyking.com/fr_fr/zippy-flightmax-2800mah-3s1p-30c.html">this one</a></td>
+		    </tr>
+		    <tr>
+			<td>Belt</td>
+			<td>20€</td>
+			<td>-</td>
+			<td><a href="https://www.ebay.fr/itm/700-5M-15-GATES-POWERGRIP-Zahnriemen-HTD-700-5M-15mm-Breite-140Zahne/322781144959?hash=item4b2741677f:g:ON0AAOSwLahaxImR">amazon</a></td>
+		    </tr>
+		    <tr>
+			<td>Pulley</td>
+			<td>0€</td>
+			<td>-</td>
+			<td>Homemade (price of 3d printing filament and aluminum)</td>
+		    </tr>
+		    <tr>
+			<td>Throttle</td>
+			<td>17€</td>
+			<td>-</td>
+			<td><a href="https://www.ebay.fr/itm/36V-48V-60V-Ebike-Twist-Grip-Throttle-with-LED-Voltage-Display-and-Power-Switch/263808199984?hash=item3d6c31ad30:g:NNEAAOSwE0ZazcDs">amazon</a></td>
+		    </tr>
+		    <tr>
+			<td>Aluminum and other stuff</td>
+			<td>30€</td>
+			<td>-</td>
+			<td>tbd</td>
+		    </tr>
+		    
+		</tbody>
+	    </table>
+	    
+	    <p>So in total the budget is about 277€, but we can easily expect unexpected costs to make this number increase to about 300€</p>
+
+	    <p>We will make a <b>8s4p</b> battery pack with our 4s 2800mah 30c lipos. One 4s lipo battery gives us about 16.5V fully charged, so putting 2 of them in series gives us about 33V. Putting 4 of these blocks in parralel, we get a battery pack with the following specifications :</p>
+	    <ul>
+		<li>33V nominal tension</li>
+		<li>(8.4Ah/268.8Wh) capacity </li>
+		<li>252A peak current</li>
+		<li>8064 peak power</li>
+	    </ul>
+
+	    <p>Which should be more than enough, since our motor should have the following specs : </p>
+	    <ul>
+		<li>24V working tension </li>
+		<li>125A peak current</li>
+		<li>3000W max power</li>
+	    </ul>
+	    
+	    
+	    <p>We can use an estimation of 12.5Wh/km (found <a href="https://www.electricbike.com/watt-hours/">here</a> and <a href="https://endless-sphere.com/forums/viewtopic.php?t=93794">here</a>) to calculate an estimated range of about <b>21kms</b>
+	    
+	    <p>Here is the bike we got : </p>
+	    <img class="img-fluid" src="../photos/photo_velo.jpg">
+	    <!-- <img class="img-fluid" src="../photos/cao_v1_face2.png"> -->
+	    
+	</div> <!-- /container -->
+    </body>
+</html>
