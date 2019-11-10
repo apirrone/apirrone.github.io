@@ -1,0 +1,138 @@
+// TODO FINISH
+markers = [
+    {
+	"name" : "Musee des sciences",
+	"lat" : 51.497987,
+	"lng" : -0.174573
+    },
+    {
+	"name" : "Abbey road",
+	"lat" : 51.536051,
+	"lng" : -0.184107
+    },
+    {
+	"name" : "Hamleys Magasin de jouets",
+	"lat" : 51.513554,
+	"lng" : -0.139956
+    },
+    {
+	"name" : "British museum",
+	"lat" : 51.519573,
+	"lng" : -0.126946
+    },
+    {
+	"name" : "Borough market",
+	"lat" : 51.505625,
+	"lng" : -0.091010
+    },
+    {
+    	"name" : "Camden town",
+    	"lat" : 51.540834,
+    	"lng" : -0.148392
+    },
+    {
+    	"name" : "natural history museum",
+    	"lat" : 51.496880,
+    	"lng" : -0.176401
+    },
+    {
+    	"name" : "Brick lane market",
+    	"lat" : 51.521367,
+    	"lng" : -0.071880
+    },
+    {
+    	"name" : "Tour de Londres",
+    	"lat" : 51.508306,
+    	"lng" : -0.075896
+    },
+    {
+    	"name" : "Sky garden",
+    	"lat" : 51.511453,
+    	"lng" : -0.083584
+    },
+    {
+    	"name" : "Hms Belfast",
+    	"lat" : 51.506786,
+    	"lng" : -0.081368
+    },
+    {
+    	"name" : "Tower bridge",
+    	"lat" : 51.505603,
+    	"lng" : -0.075346
+    },
+    {
+    	"name" : "London’s nose",
+    	"lat" : 51.506963,
+    	"lng" : -0.128615
+    },
+    {
+    	"name" : "Old operating museum",
+    	"lat" : 51.505142,
+    	"lng" : -0.088588
+    },
+    {
+    	"name" : "Wellcome collection",
+    	"lat" : 51.526173,
+    	"lng" : -0.134002
+    },
+    {
+    	"name" : "Grant museum of zoology",
+    	"lat" : 51.523766,
+    	"lng" : -0.134658
+    },
+    {
+    	"name" : "Cyberdog",
+    	"lat" : 51.542383,
+    	"lng" : -0.147534
+    },
+    {
+    	"name" : "Tate museum",
+    	"lat" : 51.508206,
+    	"lng" : -0.099320
+    },
+    {
+    	"name" : "Stompy garden Le tank",
+    	"lat" : 51.493111,
+    	"lng" : -0.082658
+    },
+    {
+    	"name" : "St pancreas",
+    	"lat" : 51.531574,
+    	"lng" : -0.126101
+    },
+    {
+    	"name" : "Cimetière de high gate",
+    	"lat" : 51.567160,
+    	"lng" : -0.147071
+    },
+    {
+    	"name" : "Long player",
+    	"lat" : 51.507953,
+    	"lng" : 0.008208
+    },
+    {
+    	"name" : "Hoxton street monster supplies",
+    	"lat" : 51.531508,
+    	"lng" : -0.080268
+    },
+    {
+    	"name" : "Viktor wind musée curiosité",
+    	"lat" : 51.534800,
+    	"lng" : -0.057580
+    },
+    {
+    	"name" : "18 folget street",
+    	"lat" : 51.521066,
+    	"lng" : -0.077732
+    },
+    {
+    	"name" : "picadelly circus",
+    	"lat" : 51.510163,
+    	"lng" : -0.135036
+    },
+    {
+    	"name" : "voie 9 3/4",
+    	"lat" : 51.532385,
+    	"lng" : -0.123943
+    }
+]
