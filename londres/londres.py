@@ -31,6 +31,8 @@ places ={
 }
 
 
+
+
 gmap = gmplot.GoogleMapPlotter(places['Musee des sciences'][0], places['Musee des sciences'][1], 13 )
 gmap.apikey = "AIzaSyAmef7s_YghiffePPa08BkBlKEDwSflPSk"
   
