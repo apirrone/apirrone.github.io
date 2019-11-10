@@ -17,7 +17,7 @@
 	     for ( var i=0; i < markers.length; ++i ) 
 		 {
 		     L.marker( [markers[i].lat, markers[i].lng] )
-		      .bindPopup( '<a href="' + markers[i].url + '" target="_blank">' + markers[i].name + '</a>' )
+		      .bindPopup( '<a href="https://maps.google.com/?q='+markers[i].lat+','+markers[i].lng+'" >' + markers[i].name + '</a>' )
 		      .addTo( map );
 		 }
 	    </script>
