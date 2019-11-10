@@ -1,5 +1,6 @@
 import gmplot
 
+
 places ={
     "Musee des sciences" : [51.497987, -0.174573], 
     "Abbey road" : [51.536051, -0.184107],
@@ -30,11 +31,19 @@ places ={
     "voie 9 3/4" : [51.532385, -0.123943]
 }
 
+file = open("index.html", 'w')
+file.write('<html>')
+file.write('<head>')
+file.write('</head>')
+file.write('<body>')
+for k, v in places.items():
+    file.write('<a href="https://maps.google.com/?q='+str(v[0])+'-'+str(v[1])+'">'+k+'</a>')
+file.write('</body>')
+file.write('</html>')
 
-
-
-gmap = gmplot.GoogleMapPlotter(places['Musee des sciences'][0], places['Musee des sciences'][1], 13 )
-gmap.apikey = "AIzaSyAmef7s_YghiffePPa08BkBlKEDwSflPSk"
+file.close()
+# gmap = gmplot.GoogleMapPlotter(places['Musee des sciences'][0], places['Musee des sciences'][1], 13 )
+# gmap.apikey = "AIzaSyAmef7s_YghiffePPa08BkBlKEDwSflPSk"
   
-# Pass the absolute path 
-gmap.draw( "/home/antoine/MISC/apirrone.github.io/londres/index.html" ) 
+# # Pass the absolute path 
+# gmap.draw( "/home/antoine/MISC/apirrone.github.io/londres/index.html" ) 
