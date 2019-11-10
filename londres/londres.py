@@ -35,4 +35,4 @@ gmap = gmplot.GoogleMapPlotter(places['Musee des sciences'][0], places['Musee de
 gmap.apikey = "AIzaSyAmef7s_YghiffePPa08BkBlKEDwSflPSk"
   
 # Pass the absolute path 
-gmap.draw( "/home/antoine/MISC/apirrone.github.io/londres/map.html" ) 
+gmap.draw( "/home/antoine/MISC/apirrone.github.io/londres/index.html" ) 
