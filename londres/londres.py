@@ -38,6 +38,7 @@ file.write('</head>')
 file.write('<body>')
 for k, v in places.items():
     file.write('<a href="https://maps.google.com/?q='+str(v[0])+'-'+str(v[1])+'">'+k+'</a>')
+    file.write('<br>')
 file.write('</body>')
 file.write('</html>')
 
