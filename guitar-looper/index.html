@@ -118,6 +118,25 @@
   .status .active { color: var(--green); font-weight: 600; }
 
   .hint { color: var(--muted); font-size: 0.78rem; text-align: center; margin-top: 6px; }
+
+  /* history */
+  .hist {
+    display: flex; align-items: center; gap: 10px; padding: 8px;
+    border-radius: 10px; cursor: pointer; user-select: none;
+  }
+  .hist:active { background: var(--panel2); }
+  .hist + .hist { margin-top: 4px; }
+  .hist img { width: 84px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px;
+    background: #000; flex-shrink: 0; }
+  .histinfo { flex: 1; min-width: 0; }
+  .histtitle { font-size: 0.92rem; font-weight: 600; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .histmeta { font-size: 0.78rem; color: var(--muted); margin-top: 3px;
+    font-variant-numeric: tabular-nums; }
+  .histdel { flex-shrink: 0; width: 38px; height: 38px; border-radius: 10px;
+    background: transparent; border: 1px solid #333849; color: var(--muted);
+    font-size: 1rem; cursor: pointer; touch-action: manipulation; }
+  .histdel:active { color: var(--red); border-color: var(--red); }
 </style>
 </head>
 <body>
@@ -189,6 +208,11 @@
     <div class="status" id="status">–</div>
   </div>
 
+  <div class="panel" id="histPanel" style="display:none">
+    <div class="label">History</div>
+    <div id="histList"></div>
+  </div>
+
   <div class="hint">Keyboard: <b>space</b> play/pause · <b>a</b>/<b>b</b> set points · <b>l</b> toggle loop · <b>←</b>/<b>→</b> ±5s · <b>↑</b>/<b>↓</b> speed</div>
 </div>
 
@@ -205,6 +229,7 @@ let loopA = null;
 let loopB = null;
 let loopOn = false;
 let speed = 1;
+let videoTitle = null;
 
 const $ = id => document.getElementById(id);
 
@@ -250,7 +275,7 @@ function saveState() {
     if (currentVideoId) {
       localStorage.setItem("gl:last", currentVideoId);
       localStorage.setItem("gl:v:" + currentVideoId,
-        JSON.stringify({ a: loopA, b: loopB, speed: speed }));
+        JSON.stringify({ a: loopA, b: loopB, speed: speed, title: videoTitle }));
     }
   } catch (e) {}
 }
@@ -263,10 +288,67 @@ function restoreForVideo(vid) {
       loopA = (typeof st.a === "number") ? st.a : null;
       loopB = (typeof st.b === "number") ? st.b : null;
       speed = clampSpeed(st.speed || 1);
+      videoTitle = st.title || null;
       return;
     }
   } catch (e) {}
-  loopA = null; loopB = null; speed = 1;
+  loopA = null; loopB = null; speed = 1; videoTitle = null;
+}
+
+// ---------- history ----------
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem("gl:hist")) || []; } catch (e) { return []; }
+}
+
+function touchHistory(vid) {
+  const h = getHistory().filter(x => x !== vid);
+  h.unshift(vid);
+  try { localStorage.setItem("gl:hist", JSON.stringify(h.slice(0, 50))); } catch (e) {}
+  renderHistory();
+}
+
+function removeFromHistory(vid) {
+  const h = getHistory().filter(x => x !== vid);
+  try {
+    localStorage.setItem("gl:hist", JSON.stringify(h));
+    localStorage.removeItem("gl:v:" + vid);
+  } catch (e) {}
+  renderHistory();
+}
+
+function renderHistory() {
+  const h = getHistory();
+  $("histPanel").style.display = h.length ? "" : "none";
+  const list = $("histList");
+  list.innerHTML = "";
+  for (const vid of h) {
+    let st = {};
+    try { st = JSON.parse(localStorage.getItem("gl:v:" + vid)) || {}; } catch (e) {}
+    const row = document.createElement("div");
+    row.className = "hist";
+    const img = document.createElement("img");
+    img.src = "https://i.ytimg.com/vi/" + vid + "/mqdefault.jpg";
+    img.loading = "lazy";
+    img.alt = "";
+    const info = document.createElement("div");
+    info.className = "histinfo";
+    const title = document.createElement("div");
+    title.className = "histtitle";
+    title.textContent = st.title || vid;
+    const meta = document.createElement("div");
+    meta.className = "histmeta";
+    let m = (typeof st.speed === "number" ? st.speed.toFixed(2) : "1.00") + "×";
+    if (st.a != null && st.b != null) m += " · loop " + fmt(st.a) + " → " + fmt(st.b);
+    meta.textContent = m;
+    info.append(title, meta);
+    const del = document.createElement("button");
+    del.className = "histdel";
+    del.textContent = "✕";
+    del.addEventListener("click", e => { e.stopPropagation(); removeFromHistory(vid); });
+    row.append(img, info, del);
+    row.addEventListener("click", () => loadVideo(vid));
+    list.appendChild(row);
+  }
 }
 
 // ---------- YouTube API ----------
@@ -302,19 +384,25 @@ function onPlayerStateChange(e) {
   }
 }
 
+function loadVideo(vid) {
+  currentVideoId = vid;
+  restoreForVideo(vid);
+  loopOn = false;
+  $("url").value = "https://youtu.be/" + vid;
+  if (apiReady) createPlayer(vid);
+  else pendingVideoId = vid;
+  updateUI();
+  saveState();
+  touchHistory(vid);
+}
+
 function loadFromInput() {
   const vid = parseVideoId($("url").value);
   if (!vid) {
     $("status").textContent = "Couldn't find a video ID in that link";
     return;
   }
-  currentVideoId = vid;
-  restoreForVideo(vid);
-  loopOn = false;
-  if (apiReady) createPlayer(vid);
-  else pendingVideoId = vid;
-  updateUI();
-  saveState();
+  loadVideo(vid);
   $("url").blur();
 }
 
@@ -334,6 +422,15 @@ setInterval(() => {
 setInterval(() => {
   if (!playerReady || !player) return;
   try {
+    // pick up the video title once the player knows it
+    if (!videoTitle && typeof player.getVideoData === "function") {
+      const d = player.getVideoData();
+      if (d && d.title && d.video_id === currentVideoId) {
+        videoTitle = d.title;
+        saveState();
+        renderHistory();
+      }
+    }
     const t = player.getCurrentTime();
     let s = fmt(t) + " · " + speed.toFixed(2) + "×";
     if (loopA != null && loopB != null) {
@@ -472,8 +569,10 @@ try {
     restoreForVideo(last);
     pendingVideoId = last;
     updateUI();
+    touchHistory(last);
   }
 } catch (e) {}
+renderHistory();
 
 // PWA service worker
 if ("serviceWorker" in navigator) {
