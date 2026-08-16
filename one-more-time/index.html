@@ -166,6 +166,39 @@
     background: transparent; border: 1px solid #333849; color: var(--muted);
     font-size: 1rem; cursor: pointer; touch-action: manipulation; }
   .histdel:active { color: var(--red); border-color: var(--red); }
+
+  /* audio mode */
+  .audiorow { display: flex; gap: 8px; margin-bottom: 12px; }
+  .audiorow .abtn {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 12px 8px; font-size: 0.95rem; font-weight: 600;
+    background: var(--panel); color: var(--muted);
+    border: 1px solid #333849; border-radius: var(--radius);
+    cursor: pointer; touch-action: manipulation; user-select: none;
+  }
+  .audiorow .abtn:active { background: var(--panel2); color: var(--text); }
+  #audioPos { width: 100%; accent-color: var(--accent); margin-top: 2px; }
+  .pitchrow { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .pitchrow .plabel { flex: 1; color: var(--muted); font-size: 0.8rem; }
+  .pitchrow button {
+    padding: 12px 16px; font-size: 1.1rem; font-weight: 700;
+    background: var(--panel2); color: var(--text); border: 1px solid #333849;
+    border-radius: 10px; cursor: pointer; touch-action: manipulation;
+  }
+  .pitchrow input {
+    width: 64px; padding: 12px 4px; text-align: center; font-size: 1rem;
+    background: var(--panel2); color: var(--accent); border: 1px solid #333849;
+    border-radius: 10px; outline: none; font-variant-numeric: tabular-nums;
+  }
+  .histaudio {
+    width: 84px; aspect-ratio: 16 / 9; border-radius: 8px; background: var(--panel2);
+    display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;
+  }
+  .textinput {
+    width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem;
+    background: var(--panel2); color: var(--text);
+    border: 1px solid #333849; border-radius: 10px; outline: none;
+  }
 </style>
 </head>
 <body>
@@ -178,9 +211,27 @@
     <button id="loadBtn">Load</button>
   </div>
 
-  <div class="playerbox">
+  <div class="audiorow">
+    <button class="abtn" id="grabBtn" style="display:none">🎧 Get HQ audio</button>
+    <label class="abtn" for="audioFile">📂 Load audio file</label>
+    <input type="file" id="audioFile" accept="audio/*" hidden>
+  </div>
+
+  <div class="playerbox" id="playerbox">
     <div class="placeholder" id="placeholder">Paste a YouTube link above and hit Load</div>
     <div id="player"></div>
+  </div>
+
+  <div class="panel" id="audioPanel" style="display:none">
+    <div class="label">🎧 HQ audio · <span id="audioName"></span></div>
+    <input type="range" id="audioPos" min="0" max="100" step="0.01" value="0">
+    <div class="pitchrow">
+      <span class="plabel">Pitch (semitones)</span>
+      <button id="semiDown">−</button>
+      <input id="semi" type="number" inputmode="numeric" step="1" min="-12" max="12" value="0">
+      <button id="semiUp">+</button>
+      <button id="toVideo">📺 video</button>
+    </div>
   </div>
 
   <div class="panel">
@@ -271,9 +322,23 @@
     <div id="histList"></div>
   </div>
 
+  <div class="panel">
+    <details>
+      <summary><span class="label">Advanced ▾</span></summary>
+      <div class="hint" style="text-align:left; margin-top:10px">
+        Optional self-hosted audio extractor for reliable “Get HQ audio”
+        (run <b>tools/audio_server.py</b>, then paste its URL here).
+        Without it, the app tries public Piped instances, which can be flaky.
+      </div>
+      <input class="textinput" id="extractor" type="url" placeholder="http://192.168.1.10:8991"
+             autocomplete="off" spellcheck="false">
+    </details>
+  </div>
+
   <div class="hint">Keyboard: <b>space</b> play/pause · <b>a</b>/<b>b</b> set points · <b>l</b> toggle loop · <b>←</b>/<b>→</b> ±5s · <b>↑</b>/<b>↓</b> speed</div>
 </div>
 
+<script src="SignalsmithStretch.js"></script>
 <script>
 "use strict";
 
@@ -288,6 +353,13 @@ let loopB = null;
 let loopOn = false;
 let speed = 1;
 let videoTitle = null;
+let semitones = 0;
+
+let mode = "yt";            // "yt" | "audio"
+let actx = null, stretch = null;
+let audioReady = false, audioPlaying = false, audioDur = 0;
+let restoredAudioPref = false;
+let lastAudioT = 0;
 
 const $ = id => document.getElementById(id);
 
@@ -327,13 +399,48 @@ function clampSpeed(v) {
   return Math.min(2, Math.max(0.25, Math.round(v * 100) / 100));
 }
 
+// ---------- unified controls (drive whichever engine is active) ----------
+function ctrlReady() { return mode === "audio" ? audioReady : !!(playerReady && player); }
+
+function curTime() {
+  if (mode === "audio") return stretch ? stretch.inputTime : 0;
+  return player.getCurrentTime();
+}
+
+function schedAudio(extra) {
+  const base = { rate: speed, semitones: semitones, active: audioPlaying };
+  stretch.schedule(Object.assign(base, extra || {}));
+}
+
+function seekAbs(t) {
+  t = Math.max(0, t);
+  if (mode === "audio") { if (audioReady) schedAudio({ input: t }); lastAudioT = t; }
+  else player.seekTo(t, true);
+}
+
+function isPlayingNow() {
+  if (mode === "audio") return audioPlaying;
+  return player.getPlayerState() === YT.PlayerState.PLAYING;
+}
+
+function doPlay() {
+  if (mode === "audio") { if (!audioReady) return; audioPlaying = true; actx.resume(); schedAudio(); }
+  else player.playVideo();
+}
+
+function doPause() {
+  if (mode === "audio") { if (!audioReady) return; audioPlaying = false; schedAudio(); }
+  else player.pauseVideo();
+}
+
 // ---------- persistence ----------
 function saveState() {
   try {
     if (currentVideoId) {
       localStorage.setItem("gl:last", currentVideoId);
       localStorage.setItem("gl:v:" + currentVideoId,
-        JSON.stringify({ a: loopA, b: loopB, on: loopOn, speed: speed, title: videoTitle }));
+        JSON.stringify({ a: loopA, b: loopB, on: loopOn, speed: speed, title: videoTitle,
+                         semi: semitones, am: mode === "audio" }));
     }
   } catch (e) {}
 }
@@ -348,10 +455,13 @@ function restoreForVideo(vid) {
       loopOn = !!(st.on && loopA != null && loopB != null);
       speed = clampSpeed(st.speed || 1);
       videoTitle = st.title || null;
+      semitones = (typeof st.semi === "number") ? st.semi : 0;
+      restoredAudioPref = !!st.am;
       return;
     }
   } catch (e) {}
   loopA = null; loopB = null; loopOn = false; speed = 1; videoTitle = null;
+  semitones = 0; restoredAudioPref = false;
 }
 
 // ---------- history ----------
@@ -372,6 +482,7 @@ function removeFromHistory(vid) {
     localStorage.setItem("gl:hist", JSON.stringify(h));
     localStorage.removeItem("gl:v:" + vid);
   } catch (e) {}
+  idbDel(vid);
   renderHistory();
 }
 
@@ -385,10 +496,17 @@ function renderHistory() {
     try { st = JSON.parse(localStorage.getItem("gl:v:" + vid)) || {}; } catch (e) {}
     const row = document.createElement("div");
     row.className = "hist";
-    const img = document.createElement("img");
-    img.src = "https://i.ytimg.com/vi/" + vid + "/mqdefault.jpg";
-    img.loading = "lazy";
-    img.alt = "";
+    let thumb;
+    if (vid.startsWith("f:")) {
+      thumb = document.createElement("div");
+      thumb.className = "histaudio";
+      thumb.textContent = "🎧";
+    } else {
+      thumb = document.createElement("img");
+      thumb.src = "https://i.ytimg.com/vi/" + vid + "/mqdefault.jpg";
+      thumb.loading = "lazy";
+      thumb.alt = "";
+    }
     const info = document.createElement("div");
     info.className = "histinfo";
     const title = document.createElement("div");
@@ -396,7 +514,7 @@ function renderHistory() {
     title.textContent = st.title || vid;
     const meta = document.createElement("div");
     meta.className = "histmeta";
-    let m = (typeof st.speed === "number" ? st.speed.toFixed(2) : "1.00") + "×";
+    let m = (st.am ? "🎧 " : "") + (typeof st.speed === "number" ? st.speed.toFixed(2) : "1.00") + "×";
     if (st.a != null && st.b != null) m += " · loop " + fmt(st.a) + " → " + fmt(st.b);
     meta.textContent = m;
     info.append(title, meta);
@@ -404,11 +522,205 @@ function renderHistory() {
     del.className = "histdel";
     del.textContent = "✕";
     del.addEventListener("click", e => { e.stopPropagation(); removeFromHistory(vid); });
-    row.append(img, info, del);
+    row.append(thumb, info, del);
     row.addEventListener("click", () => loadVideo(vid));
     list.appendChild(row);
   }
 }
+
+// ---------- audio cache (IndexedDB) ----------
+let idb = null;
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const r = indexedDB.open("gl-audio", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("files");
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+async function idbGet(key) {
+  try {
+    if (!idb) idb = await idbOpen();
+    return await new Promise(resolve => {
+      const q = idb.transaction("files").objectStore("files").get(key);
+      q.onsuccess = () => resolve(q.result || null);
+      q.onerror = () => resolve(null);
+    });
+  } catch (e) { return null; }
+}
+async function idbPut(key, val) {
+  try {
+    if (!idb) idb = await idbOpen();
+    await new Promise((resolve, reject) => {
+      const q = idb.transaction("files", "readwrite").objectStore("files").put(val, key);
+      q.onsuccess = resolve;
+      q.onerror = () => reject(q.error);
+    });
+  } catch (e) {}
+}
+async function idbDel(key) {
+  try {
+    if (!idb) idb = await idbOpen();
+    idb.transaction("files", "readwrite").objectStore("files").delete(key);
+  } catch (e) {}
+}
+
+// ---------- HQ audio engine (Signalsmith Stretch) ----------
+async function initStretch() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  actx.resume().catch(() => {});
+  if (!stretch) {
+    stretch = await SignalsmithStretch(actx);
+    stretch.connect(actx.destination);
+    stretch.setUpdateInterval(0.05);
+  }
+}
+
+function syncAudioLoop() {
+  if (mode !== "audio" || !audioReady) return;
+  const on = loopOn && loopA != null && loopB != null;
+  schedAudio({ loopStart: on ? loopA : 0, loopEnd: on ? loopB : 0 });
+}
+
+async function enterAudioMode(blob, name) {
+  mode = "audio";
+  audioReady = false; audioPlaying = false;
+  if (player && playerReady) { try { player.pauseVideo(); } catch (e) {} }
+  $("playerbox").style.display = "none";
+  $("audioPanel").style.display = "";
+  $("audioName").textContent = name;
+  $("status").textContent = "decoding audio…";
+  try {
+    await initStretch();
+    const buf = await blob.arrayBuffer();
+    const ab = await actx.decodeAudioData(buf);
+    audioDur = ab.duration;
+    const chans = [];
+    for (let c = 0; c < ab.numberOfChannels; c++) chans.push(ab.getChannelData(c));
+    await stretch.dropBuffers();
+    await stretch.addBuffers(chans);
+    audioReady = true;
+    $("audioPos").max = audioDur;
+    seekAbs(loopOn && loopA != null ? loopA : 0);
+    // resume the loop only if the context is unlocked (mobile autoplay policy)
+    if (actx.state === "running" && loopOn && loopA != null) doPlay();
+  } catch (e) {
+    $("status").textContent = "Couldn't decode that audio";
+    mode = "yt";
+    $("playerbox").style.display = "";
+    $("audioPanel").style.display = "none";
+  }
+  updateUI();
+  saveState();
+}
+
+function enterVideoMode(vid) {
+  mode = "yt";
+  if (audioReady) { audioPlaying = false; schedAudio(); }
+  $("audioPanel").style.display = "none";
+  $("playerbox").style.display = "";
+  if (apiReady) createPlayer(vid);
+  else pendingVideoId = vid;
+  updateUI();
+  saveState();
+}
+
+// ---------- audio auto-fetch ----------
+const PIPED_APIS = [
+  "https://pipedapi.kavin.rocks",
+  "https://api.piped.private.coffee",
+  "https://pipedapi.adminforge.de",
+  "https://api.piped.privacydev.net"
+];
+
+function fetchT(url, ms) {
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return fetch(url, { signal: c.signal });
+}
+
+async function tryExtractor(base, vid) {
+  try {
+    const r = await fetchT(base.replace(/\/+$/, "") + "/audio?v=" + vid, 120000);
+    if (r.ok) return await r.blob();
+  } catch (e) {}
+  return null;
+}
+
+async function tryPiped(vid) {
+  for (const api of PIPED_APIS) {
+    try {
+      const r = await fetchT(api + "/streams/" + vid, 8000);
+      if (!r.ok) continue;
+      const j = await r.json();
+      const streams = (j.audioStreams || []).slice().sort((x, y) => (y.bitrate || 0) - (x.bitrate || 0));
+      const pick = streams.find(s => (s.mimeType || "").includes("mp4")) || streams[0];
+      if (!pick || !pick.url) continue;
+      $("status").textContent = "downloading audio…";
+      const r2 = await fetchT(pick.url, 120000);
+      if (!r2.ok) continue;
+      return await r2.blob();
+    } catch (e) {}
+  }
+  return null;
+}
+
+let grabbing = false;
+async function grabAudio() {
+  if (grabbing || !currentVideoId || currentVideoId.startsWith("f:")) return;
+  const vid = currentVideoId;
+  const cached = await idbGet(vid);
+  if (cached && cached.blob) { enterAudioMode(cached.blob, cached.name || videoTitle || vid); return; }
+  grabbing = true;
+  $("grabBtn").textContent = "⏳ fetching…";
+  $("status").textContent = "fetching audio…";
+  let blob = null;
+  const custom = localStorage.getItem("gl:extractor");
+  if (custom) blob = await tryExtractor(custom, vid);
+  if (!blob) blob = await tryPiped(vid);
+  grabbing = false;
+  $("grabBtn").textContent = "🎧 Get HQ audio";
+  if (!blob) {
+    $("status").textContent = "Auto-fetch failed — video mode still works, or load a file (yt-dlp -x)";
+    return;
+  }
+  await idbPut(vid, { blob: blob, name: videoTitle || vid });
+  enterAudioMode(blob, videoTitle || vid);
+}
+
+// ---------- audio UI wiring ----------
+$("grabBtn").addEventListener("click", grabAudio);
+$("toVideo").addEventListener("click", () => {
+  if (currentVideoId && !currentVideoId.startsWith("f:")) enterVideoMode(currentVideoId);
+});
+$("audioFile").addEventListener("change", async () => {
+  const f = $("audioFile").files[0];
+  if (!f) return;
+  const id = "f:" + f.name + ":" + f.size;
+  await idbPut(id, { blob: f, name: f.name });
+  currentVideoId = id;
+  restoreForVideo(id);
+  videoTitle = f.name;
+  enterAudioMode(f, f.name);
+  touchHistory(id);
+  $("audioFile").value = "";
+});
+$("audioPos").addEventListener("input", () => seekAbs(parseFloat($("audioPos").value)));
+
+function setSemi(v) {
+  v = Math.round(v);
+  semitones = Math.min(12, Math.max(-12, isNaN(v) ? 0 : v));
+  $("semi").value = semitones;
+  applySpeed(); // reschedules the stretch node with the new pitch, and saves
+}
+$("semiDown").addEventListener("click", () => setSemi(semitones - 1));
+$("semiUp").addEventListener("click", () => setSemi(semitones + 1));
+$("semi").addEventListener("change", () => setSemi(parseFloat($("semi").value)));
+
+$("extractor").value = localStorage.getItem("gl:extractor") || "";
+$("extractor").addEventListener("change", () => {
+  try { localStorage.setItem("gl:extractor", $("extractor").value.trim()); } catch (e) {}
+});
 
 // ---------- YouTube API ----------
 window.onYouTubeIframeAPIReady = function () {
@@ -457,9 +769,16 @@ function onPlayerStateChange(e) {
 function loadVideo(vid) {
   currentVideoId = vid;
   restoreForVideo(vid);
-  $("url").value = "https://youtu.be/" + vid;
-  if (apiReady) createPlayer(vid);
-  else pendingVideoId = vid;
+  $("url").value = vid.startsWith("f:") ? "" : "https://youtu.be/" + vid;
+  idbGet(vid).then(rec => {
+    if (rec && rec.blob && (restoredAudioPref || vid.startsWith("f:"))) {
+      enterAudioMode(rec.blob, rec.name || videoTitle || "audio");
+    } else if (!vid.startsWith("f:")) {
+      enterVideoMode(vid);
+    } else {
+      $("status").textContent = "Audio file no longer cached — load it again";
+    }
+  });
   updateUI();
   saveState();
   touchHistory(vid);
@@ -539,8 +858,9 @@ $("trStep").addEventListener("change", () => {
 $("trMinus").addEventListener("click", () => bumpNext(-1));
 $("trPlus").addEventListener("click", () => bumpNext(1));
 
-// ---------- loop engine ----------
+// ---------- loop engine (YouTube mode; the stretch node loops natively) ----------
 setInterval(() => {
+  if (mode === "audio") return;
   if (!playerReady || !player || !loopOn || loopA == null || loopB == null) return;
   try {
     const t = player.getCurrentTime();
@@ -554,10 +874,10 @@ setInterval(() => {
 
 // status line ticker
 setInterval(() => {
-  if (!playerReady || !player) return;
+  if (!ctrlReady()) return;
   try {
     // pick up the video title once the player knows it
-    if (!videoTitle && typeof player.getVideoData === "function") {
+    if (mode === "yt" && !videoTitle && typeof player.getVideoData === "function") {
       const d = player.getVideoData();
       if (d && d.title && d.video_id === currentVideoId) {
         videoTitle = d.title;
@@ -565,7 +885,14 @@ setInterval(() => {
         renderHistory();
       }
     }
-    const t = player.getCurrentTime();
+    const t = curTime();
+    if (mode === "audio") {
+      // a native loop wrap shows up as inputTime jumping backwards → one rep
+      if (loopOn && loopA != null && t < lastAudioT - 0.25) onRep();
+      lastAudioT = t;
+      $("audioPos").value = t;
+      if (audioPlaying && !loopOn && audioDur && t >= audioDur - 0.05) doPause();
+    }
     let s = fmt(t) + " · " + speed.toFixed(2) + "×";
     if (loopA != null && loopB != null) {
       s += loopOn ? "  ·  looping " : "  ·  loop set ";
@@ -581,7 +908,9 @@ setInterval(() => {
 
 // ---------- speed ----------
 function applySpeed() {
-  if (playerReady && player) {
+  if (mode === "audio") {
+    if (audioReady) schedAudio();
+  } else if (playerReady && player) {
     try { player.setPlaybackRate(speed); } catch (e) {}
   }
   $("spdInput").value = speed.toFixed(2);
@@ -595,8 +924,8 @@ function bumpSpeed(d) {
 
 // ---------- loop points ----------
 function setPoint(which) {
-  if (!playerReady || !player) return;
-  const t = Math.max(0, player.getCurrentTime());
+  if (!ctrlReady()) return;
+  const t = Math.max(0, curTime());
   if (which === "a") {
     loopA = t;
     if (loopB != null && loopB <= loopA) loopB = null;
@@ -631,6 +960,10 @@ function updateUI() {
   lt.textContent = "Loop: " + (loopOn ? "ON" : "off");
   lt.className = loopOn ? "on" : "off";
   $("spdInput").value = speed.toFixed(2);
+  $("semi").value = semitones;
+  $("grabBtn").style.display =
+    (mode === "yt" && currentVideoId && !currentVideoId.startsWith("f:")) ? "" : "none";
+  syncAudioLoop();
 }
 
 // ---------- wiring ----------
@@ -638,14 +971,12 @@ $("loadBtn").addEventListener("click", loadFromInput);
 $("url").addEventListener("keydown", e => { if (e.key === "Enter") loadFromInput(); });
 
 $("playPause").addEventListener("click", () => {
-  if (!playerReady || !player) return;
-  const st = player.getPlayerState();
-  if (st === YT.PlayerState.PLAYING) player.pauseVideo();
-  else player.playVideo();
+  if (!ctrlReady()) return;
+  if (isPlayingNow()) doPause(); else doPlay();
 });
 function seekBy(d) {
-  if (!playerReady || !player) return;
-  player.seekTo(Math.max(0, player.getCurrentTime() + d), true);
+  if (!ctrlReady()) return;
+  seekAbs(curTime() + d);
 }
 $("back5").addEventListener("click", () => seekBy(-5));
 $("fwd5").addEventListener("click", () => seekBy(5));
@@ -670,7 +1001,7 @@ document.querySelectorAll(".nudge button").forEach(b => {
   b.addEventListener("click", () => nudge(b.dataset.pt, parseFloat(b.dataset.d)));
 });
 $("goA").addEventListener("click", () => {
-  if (playerReady && player && loopA != null) player.seekTo(loopA, true);
+  if (ctrlReady() && loopA != null) seekAbs(loopA);
 });
 $("loopToggle").addEventListener("click", () => {
   if (loopA == null || loopB == null) { $("status").textContent = "Set A and B first"; return; }
@@ -723,14 +1054,7 @@ if (sharedVid) {
 } else {
   try {
     const last = localStorage.getItem("gl:last");
-    if (last) {
-      $("url").value = "https://youtu.be/" + last;
-      currentVideoId = last;
-      restoreForVideo(last);
-      pendingVideoId = last;
-      updateUI();
-      touchHistory(last);
-    }
+    if (last) loadVideo(last);
   } catch (e) {}
 }
 renderHistory();
