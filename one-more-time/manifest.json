@@ -1,7 +1,7 @@
 {
-  "name": "Guitar Looper",
-  "short_name": "Looper",
-  "description": "YouTube playback speed + A/B loop trainer for learning songs by ear",
+  "name": "One More Time",
+  "short_name": "OneMoreTime",
+  "description": "Slow down and A/B-loop YouTube videos to learn songs by ear, one rep at a time",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

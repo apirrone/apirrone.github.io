@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>One More Time</title>
+<meta name="theme-color" content="#12141a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root {
+    --bg: #12141a;
+    --panel: #1c1f28;
+    --panel2: #252936;
+    --text: #e8eaf0;
+    --muted: #8a90a3;
+    --accent: #ffb648;
+    --accent-text: #201400;
+    --green: #4cd88a;
+    --red: #ff6b6b;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 12px 12px 40px; }
+
+  h1 { font-size: 1.1rem; margin: 4px 0 12px; font-weight: 600; letter-spacing: 0.02em; }
+  h1 span { color: var(--accent); }
+
+  .urlrow { display: flex; gap: 8px; margin-bottom: 12px; }
+  .urlrow input {
+    flex: 1; min-width: 0; padding: 14px; font-size: 1rem;
+    background: var(--panel); color: var(--text);
+    border: 1px solid #333849; border-radius: var(--radius); outline: none;
+  }
+  .urlrow input:focus { border-color: var(--accent); }
+  .urlrow button {
+    padding: 0 20px; font-size: 1rem; font-weight: 600;
+    background: var(--accent); color: var(--accent-text);
+    border: none; border-radius: var(--radius); cursor: pointer;
+  }
+
+  .playerbox {
+    position: relative; width: 100%; aspect-ratio: 16 / 9;
+    background: #000; border-radius: var(--radius); overflow: hidden; margin-bottom: 12px;
+  }
+  .playerbox iframe, .playerbox #player { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .playerbox .placeholder {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 0.95rem; text-align: center; padding: 20px;
+  }
+
+  .panel { background: var(--panel); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+  .panel .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 10px; }
+
+  /* transport */
+  .transport { display: flex; gap: 8px; }
+  .transport button { flex: 1; }
+
+  button.big {
+    padding: 16px 8px; font-size: 1.15rem; font-weight: 700;
+    background: var(--panel2); color: var(--text);
+    border: 1px solid #333849; border-radius: var(--radius); cursor: pointer;
+    touch-action: manipulation; user-select: none;
+  }
+  button.big:active { background: #333849; }
+
+  /* speed */
+  .speedrow { display: flex; align-items: stretch; gap: 8px; }
+  .speedrow button.big { flex: 1; font-size: 1.9rem; padding: 18px 8px; }
+  .speedbox {
+    flex: 1.4; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--panel2); border: 1px solid #333849; border-radius: var(--radius); padding: 6px;
+  }
+  .speedbox input {
+    width: 100%; text-align: center; font-size: 1.9rem; font-weight: 700;
+    background: transparent; color: var(--accent); border: none; outline: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .speedbox .unit { font-size: 0.7rem; color: var(--muted); }
+  .presets { display: flex; gap: 8px; margin-top: 10px; }
+  .presets button { flex: 1; padding: 10px 4px; font-size: 0.95rem; font-weight: 600;
+    background: transparent; color: var(--muted); border: 1px solid #333849;
+    border-radius: 10px; cursor: pointer; touch-action: manipulation; }
+  .presets button:active { color: var(--text); background: var(--panel2); }
+
+  /* loop */
+  .looprow { display: flex; gap: 8px; }
+  .loopcol { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .looprow button.set {
+    padding: 20px 8px; font-size: 1.3rem; font-weight: 800;
+    border: 1px solid #333849; border-radius: var(--radius); cursor: pointer;
+    background: var(--panel2); color: var(--text); touch-action: manipulation; user-select: none;
+  }
+  .looprow button.set.armed { background: var(--green); color: #04250f; border-color: var(--green); }
+  .looprow button.set small { display: block; font-size: 0.72rem; font-weight: 500; margin-top: 4px; opacity: 0.8; }
+  .nudge { display: flex; gap: 6px; }
+  .nudge button { flex: 1; padding: 10px 2px; font-size: 0.85rem; font-weight: 600;
+    background: transparent; color: var(--muted); border: 1px solid #333849; border-radius: 10px;
+    cursor: pointer; touch-action: manipulation; }
+  .nudge button:active { color: var(--text); background: var(--panel2); }
+
+  .loopactions { display: flex; gap: 8px; margin-top: 10px; }
+  .loopactions button { flex: 1; padding: 13px 4px; font-size: 0.95rem; font-weight: 600;
+    border-radius: var(--radius); border: 1px solid #333849; background: var(--panel2);
+    color: var(--text); cursor: pointer; touch-action: manipulation; }
+  .loopactions button:active { background: #333849; }
+  .loopactions button.off { color: var(--muted); }
+  .loopactions button.on { background: var(--green); border-color: var(--green); color: #04250f; }
+
+  .status { text-align: center; margin-top: 10px; font-size: 0.85rem; color: var(--muted);
+    font-variant-numeric: tabular-nums; }
+  .status .active { color: var(--green); font-weight: 600; }
+
+  .hint { color: var(--muted); font-size: 0.78rem; text-align: center; margin-top: 6px; }
+
+  /* history */
+  .hist {
+    display: flex; align-items: center; gap: 10px; padding: 8px;
+    border-radius: 10px; cursor: pointer; user-select: none;
+  }
+  .hist:active { background: var(--panel2); }
+  .hist + .hist { margin-top: 4px; }
+  .hist img { width: 84px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px;
+    background: #000; flex-shrink: 0; }
+  .histinfo { flex: 1; min-width: 0; }
+  .histtitle { font-size: 0.92rem; font-weight: 600; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .histmeta { font-size: 0.78rem; color: var(--muted); margin-top: 3px;
+    font-variant-numeric: tabular-nums; }
+  .histdel { flex-shrink: 0; width: 38px; height: 38px; border-radius: 10px;
+    background: transparent; border: 1px solid #333849; color: var(--muted);
+    font-size: 1rem; cursor: pointer; touch-action: manipulation; }
+  .histdel:active { color: var(--red); border-color: var(--red); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎸 One More <span>Time</span></h1>
+
+  <div class="urlrow">
+    <input id="url" type="text" inputmode="url" placeholder="Paste a YouTube link…"
+           autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button id="loadBtn">Load</button>
+  </div>
+
+  <div class="playerbox">
+    <div class="placeholder" id="placeholder">Paste a YouTube link above and hit Load</div>
+    <div id="player"></div>
+  </div>
+
+  <div class="panel">
+    <div class="label">Transport</div>
+    <div class="transport">
+      <button class="big" id="back5">⟲ 5s</button>
+      <button class="big" id="playPause">▶ / ⏸</button>
+      <button class="big" id="fwd5">5s ⟳</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="label">Speed</div>
+    <div class="speedrow">
+      <button class="big" id="spdDown">−</button>
+      <div class="speedbox">
+        <input id="spdInput" type="number" inputmode="decimal" step="0.01" min="0.25" max="2" value="1.00">
+        <div class="unit">× speed (0.25 – 2)</div>
+      </div>
+      <button class="big" id="spdUp">+</button>
+    </div>
+    <div class="presets">
+      <button data-spd="0.5">0.5×</button>
+      <button data-spd="0.65">0.65×</button>
+      <button data-spd="0.75">0.75×</button>
+      <button data-spd="0.85">0.85×</button>
+      <button data-spd="1">1×</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="label">Loop</div>
+    <div class="looprow">
+      <div class="loopcol">
+        <button class="set" id="setA">A<small id="aTime">–</small></button>
+        <div class="nudge">
+          <button data-pt="a" data-d="-0.5">A −0.5</button>
+          <button data-pt="a" data-d="0.5">A +0.5</button>
+        </div>
+      </div>
+      <div class="loopcol">
+        <button class="set" id="setB">B<small id="bTime">–</small></button>
+        <div class="nudge">
+          <button data-pt="b" data-d="-0.5">B −0.5</button>
+          <button data-pt="b" data-d="0.5">B +0.5</button>
+        </div>
+      </div>
+    </div>
+    <div class="loopactions">
+      <button id="goA">⇤ Go to A</button>
+      <button id="loopToggle" class="off">Loop: off</button>
+      <button id="clearLoop">Clear</button>
+    </div>
+    <div class="status" id="status">–</div>
+  </div>
+
+  <div class="panel" id="histPanel" style="display:none">
+    <div class="label">History</div>
+    <div id="histList"></div>
+  </div>
+
+  <div class="hint">Keyboard: <b>space</b> play/pause · <b>a</b>/<b>b</b> set points · <b>l</b> toggle loop · <b>←</b>/<b>→</b> ±5s · <b>↑</b>/<b>↓</b> speed</div>
+</div>
+
+<script>
+"use strict";
+
+let player = null;
+let playerReady = false;
+let apiReady = false;
+let pendingVideoId = null;
+let currentVideoId = null;
+
+let loopA = null;
+let loopB = null;
+let loopOn = false;
+let speed = 1;
+let videoTitle = null;
+
+const $ = id => document.getElementById(id);
+
+// ---------- helpers ----------
+function parseVideoId(url) {
+  if (!url) return null;
+  url = url.trim();
+  // bare 11-char id
+  if (/^[\w-]{11}$/.test(url)) return url;
+  let m;
+  try {
+    const u = new URL(url.includes("://") ? url : "https://" + url);
+    if (u.hostname.endsWith("youtu.be")) {
+      m = u.pathname.slice(1).split("/")[0];
+      if (/^[\w-]{11}$/.test(m)) return m;
+    }
+    if (u.hostname.includes("youtube.com")) {
+      const v = u.searchParams.get("v");
+      if (v && /^[\w-]{11}$/.test(v)) return v;
+      const parts = u.pathname.split("/").filter(Boolean);
+      // /shorts/ID, /embed/ID, /live/ID
+      if (parts.length >= 2 && ["shorts", "embed", "live"].includes(parts[0]) && /^[\w-]{11}$/.test(parts[1]))
+        return parts[1];
+    }
+  } catch (e) { /* not a URL */ }
+  return null;
+}
+
+function fmt(t) {
+  if (t == null) return "–";
+  const m = Math.floor(t / 60);
+  const s = (t % 60).toFixed(1).padStart(4, "0");
+  return m + ":" + s;
+}
+
+function clampSpeed(v) {
+  return Math.min(2, Math.max(0.25, Math.round(v * 100) / 100));
+}
+
+// ---------- persistence ----------
+function saveState() {
+  try {
+    if (currentVideoId) {
+      localStorage.setItem("gl:last", currentVideoId);
+      localStorage.setItem("gl:v:" + currentVideoId,
+        JSON.stringify({ a: loopA, b: loopB, on: loopOn, speed: speed, title: videoTitle }));
+    }
+  } catch (e) {}
+}
+
+function restoreForVideo(vid) {
+  try {
+    const raw = localStorage.getItem("gl:v:" + vid);
+    if (raw) {
+      const st = JSON.parse(raw);
+      loopA = (typeof st.a === "number") ? st.a : null;
+      loopB = (typeof st.b === "number") ? st.b : null;
+      loopOn = !!(st.on && loopA != null && loopB != null);
+      speed = clampSpeed(st.speed || 1);
+      videoTitle = st.title || null;
+      return;
+    }
+  } catch (e) {}
+  loopA = null; loopB = null; loopOn = false; speed = 1; videoTitle = null;
+}
+
+// ---------- history ----------
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem("gl:hist")) || []; } catch (e) { return []; }
+}
+
+function touchHistory(vid) {
+  const h = getHistory().filter(x => x !== vid);
+  h.unshift(vid);
+  try { localStorage.setItem("gl:hist", JSON.stringify(h.slice(0, 50))); } catch (e) {}
+  renderHistory();
+}
+
+function removeFromHistory(vid) {
+  const h = getHistory().filter(x => x !== vid);
+  try {
+    localStorage.setItem("gl:hist", JSON.stringify(h));
+    localStorage.removeItem("gl:v:" + vid);
+  } catch (e) {}
+  renderHistory();
+}
+
+function renderHistory() {
+  const h = getHistory();
+  $("histPanel").style.display = h.length ? "" : "none";
+  const list = $("histList");
+  list.innerHTML = "";
+  for (const vid of h) {
+    let st = {};
+    try { st = JSON.parse(localStorage.getItem("gl:v:" + vid)) || {}; } catch (e) {}
+    const row = document.createElement("div");
+    row.className = "hist";
+    const img = document.createElement("img");
+    img.src = "https://i.ytimg.com/vi/" + vid + "/mqdefault.jpg";
+    img.loading = "lazy";
+    img.alt = "";
+    const info = document.createElement("div");
+    info.className = "histinfo";
+    const title = document.createElement("div");
+    title.className = "histtitle";
+    title.textContent = st.title || vid;
+    const meta = document.createElement("div");
+    meta.className = "histmeta";
+    let m = (typeof st.speed === "number" ? st.speed.toFixed(2) : "1.00") + "×";
+    if (st.a != null && st.b != null) m += " · loop " + fmt(st.a) + " → " + fmt(st.b);
+    meta.textContent = m;
+    info.append(title, meta);
+    const del = document.createElement("button");
+    del.className = "histdel";
+    del.textContent = "✕";
+    del.addEventListener("click", e => { e.stopPropagation(); removeFromHistory(vid); });
+    row.append(img, info, del);
+    row.addEventListener("click", () => loadVideo(vid));
+    list.appendChild(row);
+  }
+}
+
+// ---------- YouTube API ----------
+window.onYouTubeIframeAPIReady = function () {
+  apiReady = true;
+  if (pendingVideoId) { createPlayer(pendingVideoId); pendingVideoId = null; }
+};
+
+function createPlayer(videoId) {
+  $("placeholder").style.display = "none";
+  const resume = loopOn && loopA != null;
+  if (player) {
+    playerReady = false;
+    // loadVideoById starts playback by itself; start at A when resuming a loop
+    if (resume) player.loadVideoById({ videoId: videoId, startSeconds: loopA });
+    else player.loadVideoById(videoId);
+    playerReady = true; // loadVideoById on an existing ready player stays ready
+    applySpeed();
+    return;
+  }
+  player = new YT.Player("player", {
+    videoId: videoId,
+    playerVars: { playsinline: 1, rel: 0, controls: 1, modestbranding: 1 },
+    events: {
+      onReady: () => {
+        playerReady = true;
+        applySpeed();
+        if (loopOn && loopA != null) {
+          player.seekTo(loopA, true);
+          player.playVideo();
+        }
+      },
+      onStateChange: onPlayerStateChange
+    }
+  });
+}
+
+function onPlayerStateChange(e) {
+  // if video ends while looping, restart from A
+  if (loopOn && loopA != null && e.data === YT.PlayerState.ENDED) {
+    player.seekTo(loopA, true);
+    player.playVideo();
+  }
+}
+
+function loadVideo(vid) {
+  currentVideoId = vid;
+  restoreForVideo(vid);
+  $("url").value = "https://youtu.be/" + vid;
+  if (apiReady) createPlayer(vid);
+  else pendingVideoId = vid;
+  updateUI();
+  saveState();
+  touchHistory(vid);
+}
+
+function loadFromInput() {
+  const vid = parseVideoId($("url").value);
+  if (!vid) {
+    $("status").textContent = "Couldn't find a video ID in that link";
+    return;
+  }
+  loadVideo(vid);
+  $("url").blur();
+}
+
+// ---------- loop engine ----------
+setInterval(() => {
+  if (!playerReady || !player || !loopOn || loopA == null || loopB == null) return;
+  try {
+    const t = player.getCurrentTime();
+    if (t >= loopB || t < loopA - 3) {
+      player.seekTo(loopA, true);
+      if (player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
+    }
+  } catch (e) {}
+}, 60);
+
+// status line ticker
+setInterval(() => {
+  if (!playerReady || !player) return;
+  try {
+    // pick up the video title once the player knows it
+    if (!videoTitle && typeof player.getVideoData === "function") {
+      const d = player.getVideoData();
+      if (d && d.title && d.video_id === currentVideoId) {
+        videoTitle = d.title;
+        saveState();
+        renderHistory();
+      }
+    }
+    const t = player.getCurrentTime();
+    let s = fmt(t) + " · " + speed.toFixed(2) + "×";
+    if (loopA != null && loopB != null) {
+      s += loopOn ? "  ·  looping " : "  ·  loop set ";
+      s += fmt(loopA) + " → " + fmt(loopB);
+    }
+    const el = $("status");
+    el.innerHTML = loopOn ? '<span class="active">' + s + "</span>" : s;
+  } catch (e) {}
+}, 200);
+
+// ---------- speed ----------
+function applySpeed() {
+  if (playerReady && player) {
+    try { player.setPlaybackRate(speed); } catch (e) {}
+  }
+  $("spdInput").value = speed.toFixed(2);
+  saveState();
+}
+
+function bumpSpeed(d) {
+  speed = clampSpeed(speed + d);
+  applySpeed();
+}
+
+// ---------- loop points ----------
+function setPoint(which) {
+  if (!playerReady || !player) return;
+  const t = Math.max(0, player.getCurrentTime());
+  if (which === "a") {
+    loopA = t;
+    if (loopB != null && loopB <= loopA) loopB = null;
+  } else {
+    if (loopA != null && t <= loopA) { $("status").textContent = "B must be after A"; return; }
+    loopB = t;
+    if (loopA != null) loopOn = true; // setting B arms the loop
+  }
+  updateUI();
+  saveState();
+}
+
+function nudge(which, d) {
+  if (which === "a" && loopA != null) {
+    loopA = Math.max(0, loopA + d);
+    if (loopB != null && loopA >= loopB) loopA = Math.max(0, loopB - 0.1);
+  }
+  if (which === "b" && loopB != null) {
+    loopB = Math.max(0, loopB + d);
+    if (loopA != null && loopB <= loopA) loopB = loopA + 0.1;
+  }
+  updateUI();
+  saveState();
+}
+
+function updateUI() {
+  $("aTime").textContent = fmt(loopA);
+  $("bTime").textContent = fmt(loopB);
+  $("setA").classList.toggle("armed", loopA != null);
+  $("setB").classList.toggle("armed", loopB != null);
+  const lt = $("loopToggle");
+  lt.textContent = "Loop: " + (loopOn ? "ON" : "off");
+  lt.className = loopOn ? "on" : "off";
+  $("spdInput").value = speed.toFixed(2);
+}
+
+// ---------- wiring ----------
+$("loadBtn").addEventListener("click", loadFromInput);
+$("url").addEventListener("keydown", e => { if (e.key === "Enter") loadFromInput(); });
+
+$("playPause").addEventListener("click", () => {
+  if (!playerReady || !player) return;
+  const st = player.getPlayerState();
+  if (st === YT.PlayerState.PLAYING) player.pauseVideo();
+  else player.playVideo();
+});
+$("back5").addEventListener("click", () => {
+  if (!playerReady || !player) return;
+  player.seekTo(Math.max(0, player.getCurrentTime() - 5), true);
+});
+$("fwd5").addEventListener("click", () => {
+  if (!playerReady || !player) return;
+  player.seekTo(player.getCurrentTime() + 5, true);
+});
+
+$("spdDown").addEventListener("click", () => bumpSpeed(-0.05));
+$("spdUp").addEventListener("click", () => bumpSpeed(0.05));
+$("spdInput").addEventListener("change", () => {
+  const v = parseFloat($("spdInput").value);
+  if (!isNaN(v)) { speed = clampSpeed(v); }
+  applySpeed();
+});
+document.querySelectorAll(".presets button").forEach(b => {
+  b.addEventListener("click", () => { speed = clampSpeed(parseFloat(b.dataset.spd)); applySpeed(); });
+});
+
+$("setA").addEventListener("click", () => setPoint("a"));
+$("setB").addEventListener("click", () => setPoint("b"));
+document.querySelectorAll(".nudge button").forEach(b => {
+  b.addEventListener("click", () => nudge(b.dataset.pt, parseFloat(b.dataset.d)));
+});
+$("goA").addEventListener("click", () => {
+  if (playerReady && player && loopA != null) player.seekTo(loopA, true);
+});
+$("loopToggle").addEventListener("click", () => {
+  if (loopA == null || loopB == null) { $("status").textContent = "Set A and B first"; return; }
+  loopOn = !loopOn;
+  updateUI();
+  saveState();
+});
+$("clearLoop").addEventListener("click", () => {
+  loopA = null; loopB = null; loopOn = false;
+  updateUI();
+  saveState();
+});
+
+// keyboard shortcuts (desktop)
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  switch (e.key) {
+    case " ": e.preventDefault(); $("playPause").click(); break;
+    case "a": setPoint("a"); break;
+    case "b": setPoint("b"); break;
+    case "l": $("loopToggle").click(); break;
+    case "ArrowLeft": $("back5").click(); break;
+    case "ArrowRight": $("fwd5").click(); break;
+    case "ArrowUp": e.preventDefault(); bumpSpeed(0.05); break;
+    case "ArrowDown": e.preventDefault(); bumpSpeed(-0.05); break;
+  }
+});
+
+// restore last video on open
+try {
+  const last = localStorage.getItem("gl:last");
+  if (last) {
+    $("url").value = "https://youtu.be/" + last;
+    currentVideoId = last;
+    restoreForVideo(last);
+    pendingVideoId = last;
+    updateUI();
+    touchHistory(last);
+  }
+} catch (e) {}
+renderHistory();
+
+// PWA service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+// load the YouTube iframe API
+const tag = document.createElement("script");
+tag.src = "https://www.youtube.com/iframe_api";
+document.head.appendChild(tag);
+</script>
+</body>
+</html>
