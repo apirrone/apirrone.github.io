@@ -275,7 +275,7 @@ function saveState() {
     if (currentVideoId) {
       localStorage.setItem("gl:last", currentVideoId);
       localStorage.setItem("gl:v:" + currentVideoId,
-        JSON.stringify({ a: loopA, b: loopB, speed: speed, title: videoTitle }));
+        JSON.stringify({ a: loopA, b: loopB, on: loopOn, speed: speed, title: videoTitle }));
     }
   } catch (e) {}
 }
@@ -287,12 +287,13 @@ function restoreForVideo(vid) {
       const st = JSON.parse(raw);
       loopA = (typeof st.a === "number") ? st.a : null;
       loopB = (typeof st.b === "number") ? st.b : null;
+      loopOn = !!(st.on && loopA != null && loopB != null);
       speed = clampSpeed(st.speed || 1);
       videoTitle = st.title || null;
       return;
     }
   } catch (e) {}
-  loopA = null; loopB = null; speed = 1; videoTitle = null;
+  loopA = null; loopB = null; loopOn = false; speed = 1; videoTitle = null;
 }
 
 // ---------- history ----------
@@ -359,9 +360,12 @@ window.onYouTubeIframeAPIReady = function () {
 
 function createPlayer(videoId) {
   $("placeholder").style.display = "none";
+  const resume = loopOn && loopA != null;
   if (player) {
     playerReady = false;
-    player.loadVideoById(videoId);
+    // loadVideoById starts playback by itself; start at A when resuming a loop
+    if (resume) player.loadVideoById({ videoId: videoId, startSeconds: loopA });
+    else player.loadVideoById(videoId);
     playerReady = true; // loadVideoById on an existing ready player stays ready
     applySpeed();
     return;
@@ -370,7 +374,14 @@ function createPlayer(videoId) {
     videoId: videoId,
     playerVars: { playsinline: 1, rel: 0, controls: 1, modestbranding: 1 },
     events: {
-      onReady: () => { playerReady = true; applySpeed(); },
+      onReady: () => {
+        playerReady = true;
+        applySpeed();
+        if (loopOn && loopA != null) {
+          player.seekTo(loopA, true);
+          player.playVideo();
+        }
+      },
       onStateChange: onPlayerStateChange
     }
   });
@@ -387,7 +398,6 @@ function onPlayerStateChange(e) {
 function loadVideo(vid) {
   currentVideoId = vid;
   restoreForVideo(vid);
-  loopOn = false;
   $("url").value = "https://youtu.be/" + vid;
   if (apiReady) createPlayer(vid);
   else pendingVideoId = vid;
@@ -538,6 +548,7 @@ $("loopToggle").addEventListener("click", () => {
   if (loopA == null || loopB == null) { $("status").textContent = "Set A and B first"; return; }
   loopOn = !loopOn;
   updateUI();
+  saveState();
 });
 $("clearLoop").addEventListener("click", () => {
   loopA = null; loopB = null; loopOn = false;
