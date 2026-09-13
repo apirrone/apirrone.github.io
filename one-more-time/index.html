@@ -228,9 +228,13 @@
   .challenge .ctext { flex: 1; padding: 14px; background: var(--panel2);
     border: 1px solid var(--accent); border-radius: var(--radius);
     font-size: 1.05rem; font-weight: 600; line-height: 1.4; }
-  .challenge button { padding: 0 16px; font-size: 1.3rem; background: var(--panel2);
-    color: var(--text); border: 1px solid #333849; border-radius: var(--radius);
-    cursor: pointer; touch-action: manipulation; }
+  .challenge button { padding: 0 14px; font-size: 0.85rem; font-weight: 700;
+    background: var(--panel2); color: var(--text); border: 1px solid #333849;
+    border-radius: var(--radius); cursor: pointer; touch-action: manipulation; line-height: 1.5; }
+  .ctag { display: block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--muted); margin-bottom: 4px; }
+  #cardTab { margin: 8px 0 0; padding: 8px; background: var(--bg); border-radius: 8px;
+    font-size: 0.78rem; line-height: 1.35; overflow-x: auto; }
   .licks { margin-top: 12px; }
   .licks > summary { font-size: 0.8rem; color: var(--muted); }
   .lick { margin-top: 10px; }
@@ -375,8 +379,12 @@
       <svg id="fretboard" xmlns="http://www.w3.org/2000/svg"></svg>
       <div class="prog" id="progList"></div>
       <div class="challenge">
-        <div class="ctext" id="challengeText">Load a song to get challenges</div>
-        <button id="rerollBtn" title="new challenge">🎲</button>
+        <div class="ctext">
+          <span class="ctag" id="cardTag">try this</span>
+          <span id="challengeText">Load a song to get suggestions</span>
+          <pre id="cardTab" style="display:none"></pre>
+        </div>
+        <button id="rerollBtn" title="next suggestion">Next<br>▸</button>
       </div>
       <details class="licks">
         <summary>Licks in this key</summary>
@@ -609,23 +617,64 @@ const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const FLATS = { "Db": "C#", "Eb": "D#", "Gb": "F#", "Ab": "G#", "Bb": "A#",
                 "Cb": "B", "Fb": "E", "E#": "F", "B#": "C" };
 const SCALES = {
-  "minor pentatonic": [0, 3, 5, 7, 10],
-  "blues":            [0, 3, 5, 6, 7, 10],
-  "natural minor":    [0, 2, 3, 5, 7, 8, 10],
-  "dorian":           [0, 2, 3, 5, 7, 9, 10],
-  "major pentatonic": [0, 2, 4, 7, 9],
-  "major":            [0, 2, 4, 5, 7, 9, 11],
-  "mixolydian":       [0, 2, 4, 5, 7, 9, 10]
+  "minor pentatonic":      [0, 3, 5, 7, 10],
+  "blues":                 [0, 3, 5, 6, 7, 10],
+  "natural minor":         [0, 2, 3, 5, 7, 8, 10],
+  "dorian":                [0, 2, 3, 5, 7, 9, 10],
+  "phrygian":              [0, 1, 3, 5, 7, 8, 10],
+  "harmonic minor":        [0, 2, 3, 5, 7, 8, 11],
+  "melodic minor":         [0, 2, 3, 5, 7, 9, 11],
+  "major pentatonic":      [0, 2, 4, 7, 9],
+  "major blues":           [0, 2, 3, 4, 7, 9],
+  "major":                 [0, 2, 4, 5, 7, 9, 11],
+  "lydian":                [0, 2, 4, 6, 7, 9, 11],
+  "mixolydian":            [0, 2, 4, 5, 7, 9, 10],
+  "bebop dominant":        [0, 2, 4, 5, 7, 9, 10, 11],
+  "lydian dominant":       [0, 2, 4, 6, 7, 9, 10],
+  "phrygian dominant":     [0, 1, 4, 5, 7, 8, 10],
+  "altered":               [0, 1, 3, 4, 6, 8, 10],
+  "whole tone":            [0, 2, 4, 6, 8, 10],
+  "half-whole diminished": [0, 1, 3, 4, 6, 7, 9, 10]
 };
 const TUNING = [4, 11, 7, 2, 9, 4]; // displayed top→bottom: e B G D A E
 
 function normNote(n) { n = (n || "").trim(); return FLATS[n] || n; }
 function ni(n) { return NOTES.indexOf(normNote(n)); }
 
-function suggestedScales(mode) {
-  return mode === "major"
-    ? ["major pentatonic", "major", "mixolydian", "blues"]
-    : ["minor pentatonic", "blues", "natural minor", "dorian"];
+// [scale, root ("key" = tonic, "V" = the dominant), one-line flavor]
+const SCALE_INFO = {
+  minor: [
+    ["minor pentatonic", "key", "home base — safe everywhere"],
+    ["blues", "key", "add the b5 grit"],
+    ["natural minor", "key", "the full minor color"],
+    ["dorian", "key", "brighter minor — the fusion 6th"],
+    ["melodic minor", "key", "jazz minor — smooth and modern"],
+    ["harmonic minor", "key", "dramatic, neo-classical tension"],
+    ["phrygian", "key", "dark flamenco b2"],
+    ["phrygian dominant", "V", "Spanish fire over the V chord"],
+    ["altered", "V", "maximum jazz tension on the V — then resolve"],
+    ["half-whole diminished", "V", "symmetric spice over the V"]
+  ],
+  major: [
+    ["major pentatonic", "key", "home base — safe everywhere"],
+    ["major blues", "key", "country/blues sweetness"],
+    ["major", "key", "the full major color"],
+    ["lydian", "key", "dreamy #4 — the fusion float"],
+    ["mixolydian", "key", "bluesy major — flatten the 7"],
+    ["bebop dominant", "V", "jazz passing tones over the V"],
+    ["lydian dominant", "V", "fusion V chord — #4 plus b7"],
+    ["whole tone", "V", "floating augmented weirdness on the V"],
+    ["altered", "V", "maximum jazz tension on the V — then resolve"]
+  ]
+};
+
+function scaleSuggestions() {
+  const mode = harmony && harmony.mode === "major" ? "major" : "minor";
+  return SCALE_INFO[mode].map(a => ({ name: a[0], root: a[1], desc: a[2] }));
+}
+
+function rootPcFor(rootKind) {
+  return rootKind === "V" ? (ni(harmony.key) + 7) % 12 : ni(harmony.key);
 }
 
 function parseChord(sym) {
@@ -649,9 +698,10 @@ function parseChord(sym) {
 // ---------- improv: state ----------
 let harmony = null;        // {known, artist, song, key, mode, bpm, sections, tip}
 let activeScale = null;
+let activeRoot = null;     // pitch class the fretboard is rooted on
 let activeChord = null;    // {label, tones} or null
 let improvReps = 0;
-let currentCard = null;
+let deck = [], deckPos = -1;
 let analyzing = false, analyzeTried = false;
 
 function saveHarmony() {
@@ -659,10 +709,11 @@ function saveHarmony() {
 }
 
 function loadHarmony(vid) {
-  harmony = null; activeChord = null; activeScale = null;
-  analyzeTried = false; improvReps = 0;
+  harmony = null; activeChord = null; activeScale = null; activeRoot = null;
+  analyzeTried = false; improvReps = 0; deck = []; deckPos = -1;
   try { harmony = JSON.parse(localStorage.getItem("gl:harm:" + vid)); } catch (e) {}
   renderImprov();
+  if (harmony) nextSuggestion();
   maybeAutoAnalyze();
 }
 
@@ -716,10 +767,11 @@ async function analyzeSong(force) {
     h.mode = h.mode === "major" ? "major" : "minor";
     h.key = normNote(h.key);
     harmony = h;
-    activeScale = null; activeChord = null;
+    activeScale = null; activeRoot = null; activeChord = null;
+    deck = []; deckPos = -1;
     saveHarmony();
     renderImprov();
-    dealCard();
+    nextSuggestion();
   } catch (e) {
     $("improvHint").textContent = "Analysis failed: " + e.message;
   }
@@ -755,20 +807,63 @@ const CARDS = [
   "Play as quietly as you can — dynamics under 50%"
 ];
 
-function dealCard() {
+// the suggestion deck: scales + arpeggios + licks + constraints, shuffled once,
+// stepped through in order — every "next" is genuinely different
+function buildDeck() {
+  deck = []; deckPos = -1;
   if (!harmony) return;
-  let next;
-  do { next = CARDS[Math.floor(Math.random() * CARDS.length)]; } while (next === currentCard && CARDS.length > 1);
-  currentCard = next;
-  const lo = 3 + Math.floor(Math.random() * 8);
-  $("challengeText").textContent = currentCard
-    .replace("{scale}", (harmony.key + " " + (activeScale || suggestedScales(harmony.mode)[0])))
-    .replace("{box}", lo + "–" + (lo + 4));
+  for (const s of scaleSuggestions()) deck.push({ type: "scale", s: s });
+  const seen = new Set();
+  for (const sec of (harmony.sections || []))
+    for (const c of (sec.chords || []))
+      if (!seen.has(c) && parseChord(c)) { seen.add(c); deck.push({ type: "arp", chord: c }); }
+  for (const l of applicableLicks()) deck.push({ type: "lick", l: l });
+  for (const t of CARDS) deck.push({ type: "constraint", text: t });
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = deck[i]; deck[i] = deck[j]; deck[j] = tmp;
+  }
+}
+
+function nextSuggestion() {
+  if (!harmony) return;
+  if (!deck.length) buildDeck();
+  if (!deck.length) return;
+  deckPos = (deckPos + 1) % deck.length;
+  showSuggestion(deck[deckPos]);
+}
+
+function showSuggestion(it) {
+  const tag = $("cardTag"), txt = $("challengeText"), tab = $("cardTab");
+  tab.style.display = "none";
+  if (it.type === "scale") {
+    tag.textContent = "scale";
+    activeScale = it.s.name;
+    activeRoot = rootPcFor(it.s.root);
+    activeChord = null;
+    txt.textContent = NOTES[activeRoot] + " " + it.s.name + " — " + it.s.desc;
+  } else if (it.type === "arp") {
+    tag.textContent = "arpeggio";
+    activeChord = parseChord(it.chord);
+    txt.textContent = "Outline " + it.chord + " — its chord tones are ringed in green on the fretboard";
+  } else if (it.type === "lick") {
+    tag.textContent = "lick";
+    txt.textContent = it.l.name + (it.l.base === "V" ? " (rooted on the V chord)" : "");
+    tab.textContent = renderLickTab(it.l);
+    tab.style.display = "";
+  } else {
+    tag.textContent = "constraint";
+    const lo = 3 + Math.floor(Math.random() * 8);
+    txt.textContent = it.text
+      .replace("{scale}", NOTES[activeRoot != null ? activeRoot : ni(harmony.key)] + " " + (activeScale || scaleSuggestions()[0].name))
+      .replace("{box}", lo + "–" + (lo + 4));
+  }
+  renderImprov();
 }
 
 function improvRep() {
   improvReps++;
-  if (harmony && improvReps % 4 === 0) dealCard(); // fresh constraint every 4 loop reps
+  if (harmony && improvReps % 4 === 0) nextSuggestion(); // fresh idea every 4 loop reps
 }
 
 // ---------- improv: rendering ----------
@@ -776,8 +871,8 @@ function drawFretboard() {
   const svg = $("fretboard");
   if (!harmony) { svg.innerHTML = ""; svg.style.display = "none"; return; }
   svg.style.display = "";
-  const rootIdx = ni(harmony.key);
-  const scale = SCALES[activeScale] || SCALES[suggestedScales(harmony.mode)[0]];
+  const rootIdx = activeRoot != null ? activeRoot : ni(harmony.key);
+  const scale = SCALES[activeScale] || SCALES[scaleSuggestions()[0].name];
   const scaleSet = new Set(scale.map(i => (rootIdx + i) % 12));
   const chordSet = activeChord ? new Set(activeChord.tones) : null;
   const FRETS = 15, FW = 42, SH = 24, L = 6, T = 16;
@@ -806,37 +901,63 @@ function drawFretboard() {
   svg.innerHTML = s;
 }
 
-// licks: minor-pentatonic box 1 patterns, [stringIndex 0=high e, fret offset from box root]
+// licks: [stringIndex 0=high e, fret offset from the base root fret on the low E string]
+// base: "rel" = pentatonic shape root (relative minor in major keys), "key" = tonic, "V" = dominant
 const LICKS = [
-  { name: "Box run (descending)", notes: [[0, 3], [0, 0], [1, 3], [1, 0], [2, 2], [2, 0], [3, 2], [3, 0]] },
-  { name: "Climb & land on root", notes: [[5, 0], [4, 2], [4, 0], [3, 2], [3, 0], [2, 2], [1, 0], [0, 0]] },
-  { name: "Bend the 4th (bend first note up a step)", notes: [[2, 2], [1, 0], [1, 3], [1, 0], [2, 2], [2, 0]] },
-  { name: "BB-style stab (high answer)", notes: [[1, 3], [0, 0], [0, 3], [0, 0], [1, 3], [1, 0]] },
-  { name: "Rolling triplets", notes: [[2, 0], [1, 0], [0, 0], [2, 2], [1, 0], [0, 0], [2, 0], [1, 3]] }
+  { name: "Box run (descending)", base: "rel", notes: [[0, 3], [0, 0], [1, 3], [1, 0], [2, 2], [2, 0], [3, 2], [3, 0]] },
+  { name: "Climb & land on root", base: "rel", notes: [[5, 0], [4, 2], [4, 0], [3, 2], [3, 0], [2, 2], [1, 0], [0, 0]] },
+  { name: "Bend the 4th (bend first note up a step)", base: "rel", notes: [[2, 2], [1, 0], [1, 3], [1, 0], [2, 2], [2, 0]] },
+  { name: "BB-style stab (high answer)", base: "rel", notes: [[1, 3], [0, 0], [0, 3], [0, 0], [1, 3], [1, 0]] },
+  { name: "Rolling triplets", base: "rel", notes: [[2, 0], [1, 0], [0, 0], [2, 2], [1, 0], [0, 0], [2, 0], [1, 3]] },
+  { name: "Dorian color (hit the bright 6th)", base: "key", modes: ["minor"], notes: [[3, 0], [4, 4], [4, 2], [2, 2], [2, 0], [0, 0]] },
+  { name: "Leading-tone resolve (harmonic minor)", base: "key", modes: ["minor"], notes: [[1, 4], [0, 0], [1, 0], [2, 2], [2, 0], [3, 2]] },
+  { name: "Melodic minor rise", base: "key", modes: ["minor"], notes: [[2, 0], [4, 4], [1, 4], [0, 0], [1, 0], [2, 2]] },
+  { name: "Spanish tension", base: "V", notes: [[0, 1], [0, 0], [1, 3], [1, 0], [2, 1], [3, 0]] },
+  { name: "Altered slink — resolve to the tonic after", base: "V", notes: [[0, 1], [1, 1], [1, 3], [2, 1], [2, 3], [3, 2]] },
+  { name: "Lydian float (#4 shimmer)", base: "key", modes: ["major"], notes: [[2, 3], [1, 0], [0, 0], [1, 2], [2, 1], [3, 2]] },
+  { name: "Bebop slide (b7–7–root)", base: "key", notes: [[3, 0], [1, 4], [0, 0], [1, 3], [1, 0], [2, 2]] },
+  { name: "Quartal stack (fusion 4ths run)", base: "key", notes: [[4, 0], [3, 0], [2, 0], [1, 0], [0, 0], [1, 0], [2, 0]] },
+  { name: "Enclosure — circle the root chromatically", base: "key", notes: [[0, 1], [0, -1], [0, 0], [2, 0], [2, 2], [0, 0]] }
 ];
+
+function applicableLicks() {
+  if (!harmony) return [];
+  return LICKS.filter(l => !l.modes || l.modes.includes(harmony.mode));
+}
+
+function lickRootFret(base) {
+  let pc;
+  if (base === "V") pc = (ni(harmony.key) + 7) % 12;
+  else if (base === "rel") pc = harmony.mode === "minor" ? ni(harmony.key) : (ni(harmony.key) + 9) % 12;
+  else pc = ni(harmony.key);
+  let f = (pc - 4 + 12) % 12; // fret of that note on the low E string
+  if (f < 3) f += 12;
+  return f;
+}
+
+function renderLickTab(lick) {
+  const rootFret = lickRootFret(lick.base);
+  const names = ["e", "B", "G", "D", "A", "E"];
+  const lines = names.map(n => n + "|-");
+  for (const [str, off] of lick.notes) {
+    const fr = String(rootFret + off);
+    for (let i = 0; i < 6; i++) lines[i] += (i === str ? fr : "-".repeat(fr.length)) + "--";
+  }
+  return lines.map(l => l + "|").join("\n");
+}
 
 function renderLicks() {
   const box = $("lickList");
   box.innerHTML = "";
   if (!harmony) return;
-  // the minor-pent shape rooted here sounds minor over a minor key, major-pent over a major key
-  const shapeRoot = harmony.mode === "minor" ? ni(harmony.key) : (ni(harmony.key) + 9) % 12;
-  let rootFret = (shapeRoot - 4 + 12) % 12;
-  if (rootFret < 3) rootFret += 12;
-  const names = ["e", "B", "G", "D", "A", "E"];
-  for (const lick of LICKS) {
-    const lines = names.map(n => n + "|-");
-    for (const [str, off] of lick.notes) {
-      const fr = String(rootFret + off);
-      for (let i = 0; i < 6; i++) lines[i] += (i === str ? fr : "-".repeat(fr.length)) + "--";
-    }
+  for (const lick of applicableLicks()) {
     const div = document.createElement("div");
     div.className = "lick";
     const nm = document.createElement("div");
     nm.className = "lname";
-    nm.textContent = lick.name;
+    nm.textContent = lick.name + (lick.base === "V" ? " — rooted on the V" : "");
     const pre = document.createElement("pre");
-    pre.textContent = lines.map(l => l + "|").join("\n");
+    pre.textContent = renderLickTab(lick);
     div.append(nm, pre);
     box.appendChild(div);
   }
@@ -847,7 +968,7 @@ function renderImprov() {
     const who = harmony.known && harmony.song ? (harmony.artist + " — " + harmony.song + " · ") : "";
     $("keyBadge").textContent = harmony.key + " " + harmony.mode + (harmony.bpm ? " · " + Math.round(harmony.bpm) + " bpm" : "");
     $("improvHint").textContent = who + (harmony.tip || "");
-    if (!activeScale) activeScale = suggestedScales(harmony.mode)[0];
+    if (!activeScale) { activeScale = scaleSuggestions()[0].name; activeRoot = ni(harmony.key); }
   } else {
     $("keyBadge").textContent = "key: unknown";
   }
@@ -855,11 +976,16 @@ function renderImprov() {
   const chips = $("scaleChips");
   chips.innerHTML = "";
   if (harmony) {
-    for (const sc of suggestedScales(harmony.mode)) {
+    for (const s of scaleSuggestions()) {
+      const pc = rootPcFor(s.root);
       const b = document.createElement("button");
-      b.textContent = sc;
-      b.className = sc === activeScale ? "on" : "";
-      b.addEventListener("click", () => { activeScale = sc; renderImprov(); });
+      b.textContent = NOTES[pc] + " " + s.name;
+      b.className = (s.name === activeScale && pc === activeRoot) ? "on" : "";
+      b.addEventListener("click", () => {
+        activeScale = s.name; activeRoot = pc;
+        $("improvHint").textContent = s.desc;
+        renderImprov();
+      });
       chips.appendChild(b);
     }
   }
@@ -886,7 +1012,6 @@ function renderImprov() {
   }
   drawFretboard();
   renderLicks();
-  if (harmony && !currentCard) dealCard();
 }
 
 // ---------- improv: wiring ----------
@@ -904,14 +1029,15 @@ $("keyApply").addEventListener("click", () => {
   harmony = harmony || { sections: [] };
   harmony.key = $("keyRoot").value;
   harmony.mode = $("keyMode").value;
-  activeScale = null; activeChord = null;
+  activeScale = null; activeRoot = null; activeChord = null;
+  deck = []; deckPos = -1;
   $("keyPick").style.display = "none";
   saveHarmony();
   renderImprov();
-  dealCard();
+  nextSuggestion();
 });
 $("analyzeBtn").addEventListener("click", () => analyzeSong(true));
-$("rerollBtn").addEventListener("click", dealCard);
+$("rerollBtn").addEventListener("click", nextSuggestion);
 $("apikey").value = localStorage.getItem("gl:apikey") || "";
 $("apikey").addEventListener("change", () => {
   try { localStorage.setItem("gl:apikey", $("apikey").value.trim()); } catch (e) {}
