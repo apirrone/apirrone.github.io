@@ -1,0 +1,16 @@
+{
+  "name": "Improv Dojo",
+  "short_name": "ImprovDojo",
+  "description": "Daily, adaptive improvisation workouts for guitar: scales, ear, vocabulary, rhythm, harmony and constraint cards",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12141a",
+  "theme_color": "#12141a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
